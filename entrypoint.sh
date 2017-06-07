@@ -1,9 +1,8 @@
 #!/bin/dumb-init /bin/sh
-set -xe
+set -e
 
 function wait_for_db() {
-  cur=0
-  max=30
+  local cur=0 max=30
   while [ ! -S /run/mysqld/mysqld.sock ]; do
     [[ $cur -ge $max ]] && {
       echo "timed out waiting for socket"
@@ -16,7 +15,26 @@ function wait_for_db() {
   sleep 1
 }
 
+function stop_db() {
+  local cur=0 max=10
+  echo "stopping"
+  killall mysqld
+  killall mysqld_safe
+  while (pgrep -f mysqld &> /dev/null); do
+    [[ $cur -ge $max ]] && {
+      echo "timed out waiting for shutdown. forcefully killing db"
+      killall -9 mysqld || true
+      killall -9 mysqld_safe || true
+      return
+    }
+    echo "waiting for db shutdown..."
+    sleep 1
+    let cur+=1
+  done
+}
+
 function init_db() {
+  echo "initializing database"
   chown -R mysql:mysql /var/lib/mysql
   mysql_install_db --defaults-file=/etc/mysql/my.cnf --user=mysql
   mysqld_safe --defaults-file=/etc/mysql/my.cnf --user=mysql &
@@ -35,12 +53,7 @@ GRANT ALL PRIVILEGES ON *.* TO '${MYSQL_USER}'@'localhost' WITH GRANT OPTION ;
 DROP DATABASE IF EXISTS test ;
 FLUSH PRIVILEGES ;
 EOF
-  killall mysqld
-  killall mysqld_safe
-  sleep 5s
-  killall -9 mysqld || true
-  killall -9 mysqld_safe || true
-  sleep 5s
+  stop_db
 }
 
 [ ! -f /var/lib/mysql/ibdata1 ] && {
