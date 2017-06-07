@@ -1,14 +1,24 @@
 #!/bin/dumb-init /bin/sh
 set -e
 
+function output() {
+  echo -e "\033[0;36mentrypoint\033[0m $@"
+}
+
+function tail_db() {
+  tail -f /var/lib/mysql/*.err | while read line; do
+    echo -e "\033[0;32mmysql\033[0m $line"
+  done
+}
+
 function wait_for_db() {
   local cur=0 max=30
   while [ ! -S /run/mysqld/mysqld.sock ]; do
     [[ $cur -ge $max ]] && {
-      echo "timed out waiting for socket"
+      output "timed out waiting for socket"
       exit 1
     }
-    echo "waiting for mysql socket..."
+    output "waiting for mysql socket..."
     sleep 3
     let cur+=3
   done
@@ -17,24 +27,24 @@ function wait_for_db() {
 
 function stop_db() {
   local cur=0 max=10
-  echo "stopping"
+  output "stopping db"
   killall mysqld
   killall mysqld_safe
   while (pgrep -f mysqld &> /dev/null); do
     [[ $cur -ge $max ]] && {
-      echo "timed out waiting for shutdown. forcefully killing db"
+      output "timed out waiting for shutdown. forcefully killing db"
       killall -9 mysqld || true
       killall -9 mysqld_safe || true
       return
     }
-    echo "waiting for db shutdown..."
+    output "waiting for db shutdown..."
     sleep 1
     let cur+=1
   done
 }
 
 function init_db() {
-  echo "initializing database"
+  output "initializing database"
   chown -R mysql:mysql /var/lib/mysql
   mysql_install_db --defaults-file=/etc/mysql/my.cnf --user=mysql
   mysqld_safe --defaults-file=/etc/mysql/my.cnf --user=mysql &
@@ -65,4 +75,4 @@ EOF
 }
 
 mysqld_safe --defaults-file=/etc/mysql/my.cnf --user=mysql &
-tail -f /var/lib/mysql/*.err
+tail_db
