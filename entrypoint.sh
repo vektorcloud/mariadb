@@ -1,11 +1,26 @@
 #!/bin/dumb-init /bin/sh
 set -xe
 
+function wait_for_db() {
+  cur=0
+  max=30
+  while [ ! -S /run/mysqld/mysqld.sock ]; do
+    [[ $cur -ge $max ]] && {
+      echo "timed out waiting for socket"
+      exit 1
+    }
+    echo "waiting for mysql socket..."
+    sleep 3
+    let cur+=3
+  done
+  sleep 1
+}
+
 function init_db() {
   chown -R mysql:mysql /var/lib/mysql
   mysql_install_db --defaults-file=/etc/mysql/my.cnf --user=mysql
   mysqld_safe --defaults-file=/etc/mysql/my.cnf --user=mysql &
-  sleep 10s
+  wait_for_db
   mysql -u root --password="" <<-EOF
 SET @@SESSION.SQL_LOG_BIN=0;
 USE mysql;
