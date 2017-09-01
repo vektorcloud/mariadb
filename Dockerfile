@@ -1,4 +1,4 @@
-FROM quay.io/vektorcloud/dumb-init:3.5
+FROM quay.io/vektorcloud/dumb-init:latest
 
 RUN apk add --no-cache \
   mariadb \
