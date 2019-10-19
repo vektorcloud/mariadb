@@ -1,6 +1,6 @@
 # mariadb
 
-![circleci][circleci]
+[![circleci][circleci]](https://circleci.com/gh/vektorcloud/mariadb)
 
 Tiny Alpine image for running [Mariadb](https://mariadb.com)
 
